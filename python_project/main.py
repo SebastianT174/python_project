@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 import json
 from uuid import uuid4
 import pymongo
@@ -287,7 +287,7 @@ async def delete_template_collection():
 # GET NODES AND RELATIONSHIPS FROM NEO4J AND SAVE THEM TO MONGO
 
 @app.get("/save-template/{start_node}/{end_node}")
-async def shortestPath(start_node, end_node):
+async def save_template(start_node, end_node):
 
     with neo4j_client.session() as session:
         result = session.run(
@@ -313,7 +313,7 @@ async def shortestPath(start_node, end_node):
                     relationships.append({
                         "elements_id": relationship.element_id,
                         "start_node_element_id": relationship.start_node.element_id,
-                        "end_node_elements_id": relationship.end_node.element_id,
+                        "end_node_element_id": relationship.end_node.element_id,
                         "type": relationship.type,
                         "properties": dict(relationship._properties)
                     })
@@ -334,19 +334,91 @@ async def shortestPath(start_node, end_node):
 
 
 # CREATE NEO4J STRUCTURE FROM TEMPLATE
+# CREATE NODES FROM MONGO
 
 @app.post("/use-template")
 async def use_template():
     db = mongo_client["neo4j_template"]
-    collection = db["nodes"]
+    nodes_collection = db["nodes"]
 
-    result = collection.find()
+    result = nodes_collection.find()
 
     for results in result:
-        print(results["element_id"])
+        with neo4j_client.session() as session:
+
+            node_labels = ""
+
+            if len(results["labels"]) > 0:
+                node_labels = f":{':'.join(results['labels'])}"
+
+            properties = results["properties"]
+            properties["uuid"] = str(uuid4())
+            properties["id"] = str(uuid4())
+
+            session.run(
+                f"""
+                CREATE (g{node_labels} $properties)
+                """,{
+                    "properties": properties
+                }
+            )
+
+@app.get("/test")
+async def get_element_id():
+
+    db = mongo_client["neo4j_template"]
+    nodes_collection = db["nodes"]
+    relationships_collection = db["relationships"]
+
+    nod = nodes_collection.find()
+    rel = relationships_collection.find()
+
+    nodes = []
+    relationships = []
+
+    for node in nod:
+        nodes.append(node)
+
+    for relationship in rel:
+        relationships.append(relationship)
+
+    print(nodes[0])
+
+
+        
 
 
 
 
 
+# @app.get("/test")
+# async def from_mongo_to_neo4j():
+#     db = mongo_client["neo4j_template"]
+#     nodes_collection = db["nodes"]
+    
+#     template = nodes_collection.find_one({"_id": ObjectId("64c78135bed0b3705e04f476")})
 
+#     if template is None:
+#         return HTTPException(404, "Template not found")
+    
+#     with neo4j_client.session() as session:
+#         node_labels = ""
+
+#         if len(template["labels"]) > 0:
+#             node_labels = f":{':'.join(template['labels'])}"
+
+#         properties = template["properties"]
+#         properties["uuid"] = str(uuid4())
+
+#         records = session.run(
+#             f"""
+#             CREATE (g{node_labels} $properties)
+#             RETURN g
+#             """,
+#             {
+#                 "properties": properties
+#             }
+#         )
+
+#         results = records.single()
+#         return results
