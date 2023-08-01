@@ -373,19 +373,11 @@ async def get_element_id():
     nod = nodes_collection.find()
     rel = relationships_collection.find()
 
-    nodes = []
     relationships = []
+    nodes = []
 
     for node in nod:
-        nodes.append(node)
-
-    for relationship in rel:
-        relationships.append(relationship)
-
-    print(nodes[0])
-
-
-        
+        print(node["element_id"])
 
 
 
