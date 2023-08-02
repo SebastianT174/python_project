@@ -340,6 +340,7 @@ async def save_template(start_node, end_node):
 async def use_template():
     db = mongo_client["neo4j_template"]
     nodes_collection = db["nodes"]
+    relationships_collection = db["relationships"]
 
     result = nodes_collection.find()
 
@@ -353,7 +354,6 @@ async def use_template():
 
             properties = results["properties"]
             properties["uuid"] = str(uuid4())
-            properties["id"] = str(uuid4())
 
             session.run(
                 f"""
@@ -363,25 +363,23 @@ async def use_template():
                 }
             )
 
-@app.get("/test")
-async def get_element_id():
+# CREATE RELATIONSHIPS AND BIND TO NODES
 
-    db = mongo_client["neo4j_template"]
-    nodes_collection = db["nodes"]
-    relationships_collection = db["relationships"]
+    nodes_element_id = nodes_collection.find()
+    relationships_element_id = relationships_collection.find()
 
-    nod = nodes_collection.find()
-    rel = relationships_collection.find()
+    nodes_element_id = list(nodes_element_id)
+    relationships_element_id = list(relationships_element_id)
 
-    relationships = []
-    nodes = []
-
-    for node in nod:
-        print(node["element_id"])
-
-
-
-
+    for nodes in nodes_element_id:
+        for relationships_start_nodes in relationships_element_id:
+            if nodes["element_id"] == relationships_start_nodes["start_node_element_id"]:
+                with neo4j_client.session() as session:
+                    session.run(
+                        """
+                        MATCH (g) WHERE g.
+                        """
+                    )
 
 # @app.get("/test")
 # async def from_mongo_to_neo4j():
